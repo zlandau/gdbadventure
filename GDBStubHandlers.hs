@@ -6,11 +6,15 @@
 
 module GDBStubHandlers where
 
-import GDBStub
+import GDBStub ( sendSucess, sendResponse )
 
-handleCommand :: Socket -> [Char] -> IO ()
-        handleCommand sock ('m':pktData) = do sendSuccess sock
+handleCommand sock ('m':pktData) = do
+        sendSuccess sock
         sendResponse sock "89e0e8b92c000089"
         where address = take 8 pktData
-        length = drop 9 pktData
+              length = drop 9 pktData
 
+handleCommand sock ('?') = do
+        putStrLn "ljkfdas"
+        sendSuccess sock
+        sendResponse sock "WAA"

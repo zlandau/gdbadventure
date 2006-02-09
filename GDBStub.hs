@@ -1,10 +1,12 @@
 module GDBStub where
 
 import Char
+import Maybe
 import Numeric
 import Network.Alt
 import Control.Exception as E
-import Foreign
+import Symbols as Symbols
+import Utils
 
 port = "1234"
 
@@ -47,18 +49,48 @@ getPacket s = do c <- recvString s 1
           loop acc [ch] = recvString s 1 >>= loop (ch:acc)
           loop acc "" = return acc -- how should we actually handle this?
 
+gdbAddress = reverse . toAddress
+
+handleCommand :: Socket -> String -> IO ()
+handleCommand sock ('m':pktData) = do
+        sendSuccess sock
+        --sendResponse sock response
+        putStrLn pktData
+        sendResponse sock response
+        where response = memoryRequest address len
+              address = case readHex addressStr of
+                             [(i,_)] -> i
+                             _       -> 0
+              addressStr = takeWhile (/=',') pktData
+              lenStr = drop ((length addressStr)+1) pktData 
+              len = case readHex lenStr of
+                             [(i,_)] -> i
+                             _       -> 0
+
+handleCommand sock ('?':_) = do
+        sendSuccess sock
+        sendResponse sock "T0505:00000000;04:a057c7bf;08:c017f6b7;"
+
 handleCommand sock _ = sendSuccess sock >> sendResponse sock ""
+
+memoryRequest :: Address -> Int -> String
+memoryRequest addr len | isIdentifier addr = toAddress $ idDescAddress addr
+                       | isDescription addr = strToHexStr $ nullStr $ partialDesc addr len
+memoryRequest _ len = pad '0' (len-1) "0"
+
+partialDesc :: Address -> Int -> String
+partialDesc addr len = partialStr desc offset len
+        where desc = description item
+              item = itemById addr
+              offset = idDescOffset addr
+
 
 sendFailure sock = sendString sock "-"
 sendSuccess sock = sendString sock "+"
 
-pad val padValue i = padding ++ val
-                     where padding = take len $ repeat padValue
-                           len = i - (length val)
-
 sendResponse sock pkt = sendString sock pktData
                         where pktData = "$" ++ pkt ++ "#" ++ chk
-                              chk = pad hexSum '0' 2
+                              chk = pad2 hexSum
                               hexSum = showHex (calculateChecksum pkt) ""
 
 -- Is this how RLE should be handled?  Do we need to handle it?
@@ -71,9 +103,13 @@ processPacket sock pkt chk = if verifyPacket pkt chk
                              then handleCommand sock pkt
                              else sendFailure sock
 
-handler sock = do s <- recvString sock 1
+verifyResponse sock = do r <- recvString sock 1
+                         if r == "+"
+                           then return ()
+                           else fail "Server gave error response"
+
+handler sock = do verifyResponse sock
                   (pkt,chk) <- getPacket sock
-                  putStrLn $ show $ calculateChecksum pkt
                   processPacket sock pkt chk
                   handler sock
 
