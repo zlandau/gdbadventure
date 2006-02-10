@@ -4,6 +4,7 @@ struct symbols {
         char *dummy;
         char *here;
         char *lamp;
+        char *direction;
         char *another;
 } symbol;
 

@@ -5,13 +5,14 @@ data Item = Item { identifier :: String
                  }
 
 items :: [Item]
-items = [dummy, here, lamp]
+items = [dummy, here, lamp, direction]
 
 type Address = Integer
 
 dummy = Item { identifier = "dummy", description = "dummy var" }
 here = Item { identifier = "here", description = "a room!" }
 lamp = Item { identifier = "lamp", description = "a lamp!" }
+direction = Item { identifier = "direction", description = "up" }
 unknown = Item { identifier = "", description = "what do you mean?" }
 
 identifier_base :: Address

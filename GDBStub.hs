@@ -54,25 +54,43 @@ handleCommand sock ('m':pktData) = do
         sendSuccess sock
         sendResponse sock response
         where response = memoryRequest address len
-              address = case readHex addressStr of
-                             [(i,_)] -> i
-                             _       -> 0
-              addressStr = takeWhile (/=',') pktData
-              lenStr = drop ((length addressStr)+1) pktData 
-              len = case readHex lenStr of
-                             [(i,_)] -> i
-                             _       -> 0
+              address = readAddress pktData
+              len = readLength pktData
+
+handleCommand sock ('M':pktData) = do
+        sendSuccess sock
+        sendResponse sock result
+        putStrLn $ "setting " ++ (show address) ++ " " ++ (show bytes)
+        putStrLn $ (description item)
+        where result = memorySet address len bytes
+              item = itemById address
+              address = readAddress pktData
+              len = readLength pktData
+              bytes = drop 1 $ dropWhile (/=':') pktData
 
 handleCommand sock ('?':_) = do
         sendSuccess sock
         sendResponse sock "T0505:00000000;04:a057c7bf;08:c017f6b7;"
-
 handleCommand sock _ = sendSuccess sock >> sendResponse sock ""
+
+readAddress :: String -> Address
+readAddress pktData = case readHex addressStr of
+                           [(i,_)] -> i
+                           _       -> 0
+            where addressStr = takeWhile (/=',') pktData
+
+readLength :: String -> Int
+readLength pktData = case readHex lenStr of
+                          [(i,_)] -> i
+                          _       -> 0
+           where lenStr = drop 1 $ dropWhile (/=',') pktData
 
 memoryRequest :: Address -> Int -> String
 memoryRequest addr len | isIdentifier addr = toAddress $ idDescAddress addr
                        | isDescription addr = strToHexStr $ nullStr $ partialDesc addr len
 memoryRequest _ len = pad '0' (len-1) "0"
+
+memorySet addr len bytes = "OK"
 
 partialDesc :: Address -> Int -> String
 partialDesc addr len = partialStr desc offset len
