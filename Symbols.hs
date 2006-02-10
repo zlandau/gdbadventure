@@ -8,11 +8,17 @@ import Utils
 data Symbol = Item { description :: String }
             | Action { act_handler :: IO () }
 
+type Address = Integer
 
+data MemoryRequest = MemoryRequest { address :: Address
+                                   , request_len :: Int
+                                   , request_data :: String
+                                   }
+
+            
 symbols :: [Symbol]
 symbols = [dummy, here, lamp, direction]
 
-type Address = Integer
 
 dummy = Item { description = "dummy var" }
 here = Item { description = "a room!" }
@@ -47,14 +53,22 @@ symbolById addr = symbol
 doSymbol (Item d) = putStrLn "an item"
 doSymbol (Action a) = putStrLn "an action"
 
-memoryGet :: Symbol -> Address -> Int -> String
-memoryGet (Item desc) addr len = strToHexStr $ nullStr $ partialStr desc offset len
+memoryGet :: Symbol -> MemoryRequest -> String
+memoryGet (Item desc) (MemoryRequest addr len _)
+                = strToHexStr $ nullStr $ partialStr desc offset len
     where offset = idDescOffset addr
-memoryGet (Action a) addr len = "E11"
+memoryGet (Action a) (MemoryRequest _ _ _) = "E11"
 
-memorySet :: Symbol -> Address -> Int -> Int -> String
-memorySet (Item desc) addr len bytes = "E01"
-memorySet (Action a) addr len bytes = "OK"
+memorySet :: Symbol -> MemoryRequest -> String
+memorySet (Item desc) (MemoryRequest addr len bytes) = "E01"
+memorySet (Action a) (MemoryRequest addr len bytes) = "OK"
+
+memoryRequest :: MemoryRequest -> String
+memoryRequest mr@(MemoryRequest addr len _)
+              | isIdentifier addr = toAddress $ idDescAddress addr
+              | isDescription addr = memoryGet symbol mr
+    where symbol = symbolById addr
+memoryRequest (MemoryRequest _ len _) = pad '0' (len-1) "0"
 
 isIdentifier :: Address -> Bool
 isIdentifier x = (x >= identifier_base) && (x < identifier_space)

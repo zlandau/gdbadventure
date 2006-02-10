@@ -55,7 +55,8 @@ handleCommand sock ('m':pktData) = do
         sendResponse sock response
         if isDescription address then doSymbol $ symbolById address
             else putStrLn "nope"
-        where response = memoryRequest address len
+        where response = memoryRequest request
+              request = MemoryRequest address len ""
               address = readAddress pktData
               len = readLength pktData
 
@@ -65,7 +66,8 @@ handleCommand sock ('M':pktData) = do
         putStrLn $ "setting " ++ (show address) ++ " " ++ (show bytes)
         putStrLn $ "result is " ++ result
         --putStrLn $ (description symbol)
-        where result = memorySet symbol address len bytes
+        where result = memorySet symbol request
+              request = MemoryRequest address len bytes
               symbol = symbolById address
               address = readAddress pktData
               len = readLength pktData
@@ -88,14 +90,8 @@ readLength pktData = case readHex lenStr of
                           _       -> 0
            where lenStr = drop 1 $ dropWhile (/=',') pktData
 
-readBytes :: String -> Int
-readBytes pktData = read $ drop 1 $ dropWhile (/=':') pktData
-
-memoryRequest :: Address -> Int -> String
-memoryRequest addr len | isIdentifier addr = toAddress $ idDescAddress addr
-                       | isDescription addr = memoryGet symbol addr len
-              where symbol = symbolById addr
-memoryRequest _ len = pad '0' (len-1) "0"
+readBytes :: String -> String
+readBytes pktData = drop 1 $ dropWhile (/=':') pktData
 
 partialDesc :: Address -> Int -> String
 partialDesc addr len = partialStr desc offset len
