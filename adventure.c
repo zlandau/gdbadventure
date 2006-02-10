@@ -9,6 +9,7 @@ struct symbols {
 } symbol;
 
 char *test;
+const something = 5;
 
 int main(void)
 {

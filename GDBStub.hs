@@ -53,6 +53,8 @@ handleCommand :: Socket -> String -> IO ()
 handleCommand sock ('m':pktData) = do
         sendSuccess sock
         sendResponse sock response
+        if isDescription address then doSymbol $ symbolById address
+            else putStrLn "nope"
         where response = memoryRequest address len
               address = readAddress pktData
               len = readLength pktData
@@ -61,9 +63,9 @@ handleCommand sock ('M':pktData) = do
         sendSuccess sock
         sendResponse sock result
         putStrLn $ "setting " ++ (show address) ++ " " ++ (show bytes)
-        putStrLn $ (description item)
+        putStrLn $ (description symbol)
         where result = memorySet address len bytes
-              item = itemById address
+              symbol = symbolById address
               address = readAddress pktData
               len = readLength pktData
               bytes = drop 1 $ dropWhile (/=':') pktData
@@ -94,8 +96,8 @@ memorySet addr len bytes = "OK"
 
 partialDesc :: Address -> Int -> String
 partialDesc addr len = partialStr desc offset len
-        where desc = description item
-              item = itemById addr
+        where desc = description symbol
+              symbol = symbolById addr
               offset = idDescOffset addr
 
 

@@ -1,42 +1,49 @@
 module Symbols where
 
-data Item = Item { identifier :: String
-                 , description :: String
-                 }
+--class Symbol a where
+--    get_desc :: a -> String
 
-items :: [Item]
-items = [dummy, here, lamp, direction]
+data Symbol = Item { description :: String }
+            | Action { act_handler :: IO () }
+
+
+symbols :: [Symbol]
+symbols = [dummy, here, lamp, direction]
 
 type Address = Integer
 
-dummy = Item { identifier = "dummy", description = "dummy var" }
-here = Item { identifier = "here", description = "a room!" }
-lamp = Item { identifier = "lamp", description = "a lamp!" }
-direction = Item { identifier = "direction", description = "up" }
-unknown = Item { identifier = "", description = "what do you mean?" }
+dummy = Item { description = "dummy var" }
+here = Item { description = "a room!" }
+lamp = Item { description = "a lamp!" }
+direction = Action { act_handler = putStrLn "hi im a direction"}
+unknown = Item { description = "what do you mean?" }
 
 identifier_base :: Address
-identifier_base = 0x80495d0
+identifier_base = 0x80495d4
 
 description_size = 1024 :: Integer
 
--- Get the description address for a given identifier
+-- Get the symbol address for a given identifier
 idDescAddress :: Address -> Address
 idDescAddress addr = itemPos * description_size
     where itemPos = (addr - identifier_base) `div` 4
 
--- Get offset from beginning of description
+-- Get offset from beginning of symbol
 idDescOffset :: Address -> Int
 idDescOffset addr = fromInteger $ addr - (addr - start)
     where start = addr `mod` description_size
 
--- Get an item from its ID
-itemById :: Address -> Item
-itemById addr = item
-    where offset = fromInteger $ addr --(addr - identifier_base)
-          itemPos = offset `div` 1024
-          item = if itemPos >= length items then unknown
-                   else items !! itemPos
+-- Get a symbol from its ID
+symbolById :: Address -> Symbol
+symbolById addr = symbol
+    where offset = fromInteger $ addr
+          symbolPos = offset `div` 1024
+          symbol = if symbolPos >= length symbols then unknown
+                   else symbols !! symbolPos
+
+--doSymbol :: Symbol -> IO ()
+doSymbol (Item d) = putStrLn "an item"
+doSymbol (Action a) = putStrLn "an action"
 
 isIdentifier :: Address -> Bool
 isIdentifier x = (x >= identifier_base) && (x < identifier_space)
@@ -47,4 +54,4 @@ isDescription x = (x < identifier_base) && (x < description_space)
     where description_space = (numIdentifiers+1) * 1024
 
 numIdentifiers :: Integer
-numIdentifiers = toInteger $ (length items) + 2
+numIdentifiers = toInteger $ (length symbols) + 2
