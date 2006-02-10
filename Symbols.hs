@@ -5,35 +5,45 @@ data Item = Item { identifier :: String
                  }
 
 items :: [Item]
-items = [here, lamp]
+items = [dummy, here, lamp]
 
 type Address = Integer
 
+dummy = Item { identifier = "dummy", description = "dummy var" }
 here = Item { identifier = "here", description = "a room!" }
 lamp = Item { identifier = "lamp", description = "a lamp!" }
 unknown = Item { identifier = "", description = "what do you mean?" }
 
 identifier_base :: Address
-identifier_base = 0x80495bc
+identifier_base = 0x80495d0
+
+description_size = 1024 :: Integer
 
 -- Get the description address for a given identifier
 idDescAddress :: Address -> Address
-idDescAddress addr = itemPos * 1024
+idDescAddress addr = itemPos * description_size
     where itemPos = (addr - identifier_base) `div` 4
 
 -- Get offset from beginning of description
 idDescOffset :: Address -> Int
 idDescOffset addr = fromInteger $ addr - (addr - start)
-    where start = addr `mod` 1024
+    where start = addr `mod` description_size
 
 -- Get an item from its ID
 itemById :: Address -> Item
-itemById addr = items !! (offset `div` 4)
-    where offset = fromInteger $ (addr - identifier_base)
+itemById addr = item
+    where offset = fromInteger $ addr --(addr - identifier_base)
+          itemPos = offset `div` 1024
+          item = if itemPos >= length items then unknown
+                   else items !! itemPos
 
--- XXX: Provide a real mechanism for determining range
 isIdentifier :: Address -> Bool
-isIdentifier x = (x < identifier_base) && (x < 100)
+isIdentifier x = (x >= identifier_base) && (x < identifier_space)
+    where identifier_space = identifier_base + ((numIdentifiers+1) * 4)
 
 isDescription :: Address -> Bool
-isDescription x = (x >= identifier_base) && (x < (identifier_base + 5000))
+isDescription x = (x < identifier_base) && (x < description_space)
+    where description_space = (numIdentifiers+1) * 1024
+
+numIdentifiers :: Integer
+numIdentifiers = toInteger $ (length items) + 2

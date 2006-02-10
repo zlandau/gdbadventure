@@ -9,22 +9,23 @@ nullStr s = s ++ "\0"
 pad :: Char -> Int -> String -> String
 pad padValue i val = padding ++ val
     where padding = take len $ repeat padValue
-          len = i - (length val)
+          len = i - length val
 
 pad2 = pad '0' 2
 pad8 = pad '0' 8
 
-toAddress addr = reverseBytes $ pad8 $ intToHexStr $ fromInteger addr
+toAddress :: Integer -> String
+toAddress addr = reverseBytes $ reverse $ pad8 $ intToHexStr addr
 
 reverseBytes :: String -> String
-reverseBytes (a:b:c:d:xs) = c:d:a:b:reverseBytes xs
+reverseBytes (a:b:xs) = b:a:reverseBytes xs
 reverseBytes _ = ""
 
-intToHexStr :: Int -> String
+intToHexStr :: Integer -> String
 intToHexStr x = Numeric.showHex x []
 
 strToHexStr :: String -> String
-strToHexStr s = concatMap (pad2 . intToHexStr . ord) s
+strToHexStr s = concatMap (pad2 . intToHexStr . toInteger . ord) s
 
 partialStr :: String -> Int -> Int -> String
 partialStr s start len = take len $ drop start s

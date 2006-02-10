@@ -49,13 +49,9 @@ getPacket s = do c <- recvString s 1
           loop acc [ch] = recvString s 1 >>= loop (ch:acc)
           loop acc "" = return acc -- how should we actually handle this?
 
-gdbAddress = reverse . toAddress
-
 handleCommand :: Socket -> String -> IO ()
 handleCommand sock ('m':pktData) = do
         sendSuccess sock
-        --sendResponse sock response
-        putStrLn pktData
         sendResponse sock response
         where response = memoryRequest address len
               address = case readHex addressStr of
