@@ -63,12 +63,13 @@ handleCommand sock ('M':pktData) = do
         sendSuccess sock
         sendResponse sock result
         putStrLn $ "setting " ++ (show address) ++ " " ++ (show bytes)
-        putStrLn $ (description symbol)
-        where result = memorySet address len bytes
+        putStrLn $ "result is " ++ result
+        --putStrLn $ (description symbol)
+        where result = memorySet symbol address len bytes
               symbol = symbolById address
               address = readAddress pktData
               len = readLength pktData
-              bytes = drop 1 $ dropWhile (/=':') pktData
+              bytes = readBytes pktData
 
 handleCommand sock ('?':_) = do
         sendSuccess sock
@@ -87,12 +88,14 @@ readLength pktData = case readHex lenStr of
                           _       -> 0
            where lenStr = drop 1 $ dropWhile (/=',') pktData
 
+readBytes :: String -> Int
+readBytes pktData = read $ drop 1 $ dropWhile (/=':') pktData
+
 memoryRequest :: Address -> Int -> String
 memoryRequest addr len | isIdentifier addr = toAddress $ idDescAddress addr
-                       | isDescription addr = strToHexStr $ nullStr $ partialDesc addr len
+                       | isDescription addr = memoryGet symbol addr len
+              where symbol = symbolById addr
 memoryRequest _ len = pad '0' (len-1) "0"
-
-memorySet addr len bytes = "OK"
 
 partialDesc :: Address -> Int -> String
 partialDesc addr len = partialStr desc offset len

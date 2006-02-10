@@ -1,5 +1,7 @@
 module Symbols where
 
+import Utils
+
 --class Symbol a where
 --    get_desc :: a -> String
 
@@ -44,6 +46,15 @@ symbolById addr = symbol
 --doSymbol :: Symbol -> IO ()
 doSymbol (Item d) = putStrLn "an item"
 doSymbol (Action a) = putStrLn "an action"
+
+memoryGet :: Symbol -> Address -> Int -> String
+memoryGet (Item desc) addr len = strToHexStr $ nullStr $ partialStr desc offset len
+    where offset = idDescOffset addr
+memoryGet (Action a) addr len = "E11"
+
+memorySet :: Symbol -> Address -> Int -> Int -> String
+memorySet (Item desc) addr len bytes = "E01"
+memorySet (Action a) addr len bytes = "OK"
 
 isIdentifier :: Address -> Bool
 isIdentifier x = (x >= identifier_base) && (x < identifier_space)
