@@ -6,6 +6,7 @@ import Numeric
 import Network.Alt
 import Control.Exception as E
 import Symbols as Symbols
+import State
 import Utils
 
 port = "1234"
@@ -24,7 +25,7 @@ server_loop = do
           acceptLoop s `E.catch` (\e -> close s)
 
 acceptLoop sock = do (csock, sa) <- accept sock
-                     handler csock `E.catch` (\e -> print e >> close csock)
+                     handler (return $ State csock "u") `E.catch` (\e -> print e >> close csock)
                      acceptLoop sock
 
 getChecksum :: Socket -> IO Int
@@ -49,22 +50,23 @@ getPacket s = do c <- recvString s 1
           loop acc [ch] = recvString s 1 >>= loop (ch:acc)
           loop acc "" = return acc -- how should we actually handle this?
 
-handleCommand :: Socket -> String -> IO ()
-handleCommand sock ('m':pktData) = do
-        sendSuccess sock
-        sendResponse sock response
-        if isDescription address then doSymbol $ symbolById address
-            else putStrLn "nope"
+handleCommand :: State -> String -> IO State
+handleCommand state ('m':pktData) = do
+        sendSuccess (conn state)
+        sendResponse (conn state) response
+        if isDescription address then doSymbol state $ symbolById address
+            else return state
         where response = memoryRequest request
               request = MemoryRequest address len ""
               address = readAddress pktData
               len = readLength pktData
 
-handleCommand sock ('M':pktData) = do
-        sendSuccess sock
-        sendResponse sock result
+handleCommand state ('M':pktData) = do
+        sendSuccess (conn state)
+        sendResponse (conn state) result
         putStrLn $ "setting " ++ (show address) ++ " " ++ (show bytes)
         putStrLn $ "result is " ++ result
+        return state
         --putStrLn $ (description symbol)
         where result = memorySet symbol request
               request = MemoryRequest address len bytes
@@ -73,10 +75,12 @@ handleCommand sock ('M':pktData) = do
               len = readLength pktData
               bytes = readBytes pktData
 
-handleCommand sock ('?':_) = do
-        sendSuccess sock
-        sendResponse sock "T0505:00000000;04:a057c7bf;08:c017f6b7;"
-handleCommand sock _ = sendSuccess sock >> sendResponse sock ""
+handleCommand state ('?':_) = do
+        sendSuccess (conn state)
+        sendResponse (conn state) "T0505:00000000;04:a057c7bf;08:c017f6b7;"
+        return state
+
+handleCommand state _ = sendSuccess (conn state) >> sendResponse (conn state) "" >> return state
 
 readAddress :: String -> Address
 readAddress pktData = case readHex addressStr of
@@ -114,17 +118,20 @@ sendResponse sock pkt = sendString sock pktData
 --decodeRLE (x:xs) = x : decodeRLE xs
 --decodeRLE x = x
 
-processPacket sock pkt chk = if verifyPacket pkt chk
-                             then handleCommand sock pkt
-                             else sendFailure sock
+processPacket :: State -> String -> Int -> IO State
+processPacket state pkt chk = if verifyPacket pkt chk
+                               then do handleCommand state pkt
+                                       return state
+                               else do sendFailure (conn state)
+                                       return state
 
 verifyResponse sock = do r <- recvString sock 1
                          if r == "+"
                            then return ()
                            else fail "Server gave error response"
 
-handler sock = do verifyResponse sock
-                  (pkt,chk) <- getPacket sock
-                  processPacket sock pkt chk
-                  handler sock
+handler state = do st <- state
+                   verifyResponse $ conn st
+                   (pkt,chk) <- getPacket $ conn st
+                   handler $ processPacket st pkt chk
 

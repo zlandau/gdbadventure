@@ -1,6 +1,7 @@
 module Symbols where
 
 import Utils
+import State
 
 --class Symbol a where
 --    get_desc :: a -> String
@@ -49,9 +50,9 @@ symbolById addr = symbol
           symbol = if symbolPos >= length symbols then unknown
                    else symbols !! symbolPos
 
---doSymbol :: Symbol -> IO ()
-doSymbol (Item d) = putStrLn "an item"
-doSymbol (Action a) = putStrLn "an action"
+doSymbol :: State -> Symbol -> IO State
+doSymbol state (Item d) = putStrLn "an item" >> return state
+doSymbol state (Action a) = putStrLn "an action" >> return state
 
 memoryGet :: Symbol -> MemoryRequest -> String
 memoryGet (Item desc) (MemoryRequest addr len _)
