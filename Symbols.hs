@@ -8,7 +8,7 @@ import State
 
 data Symbol = Item { description :: String }
             | Action { act_handler :: IO (),
-                       read_memory :: String }
+                       read_memory :: State -> String }
 
 type Address = Integer
 
@@ -24,10 +24,10 @@ symbols = [dummy, here, lamp, direction]
 
 dummy = Item { description = "dummy var" }
 here = Action { act_handler = putStrLn "some action",
-                read_memory = "in a room" }
+                read_memory = \state -> "in a room " ++ (dir state) }
 lamp = Item { description = "a lamp!" }
 direction = Action { act_handler = putStrLn "hi im a direction",
-                     read_memory = "hi" }
+                     read_memory = \state -> "hi" }
 unknown = Item { description = "what do you mean?" }
 
 identifier_base :: Address
@@ -66,7 +66,7 @@ memoryGet :: State -> Symbol -> MemoryRequest -> String
 memoryGet state (Item desc) (MemoryRequest addr len _)
                 = getGDBString desc addr len
 memoryGet state (Action a r) (MemoryRequest addr len _)
-                = getGDBString r addr len
+                = getGDBString (r state) addr len
            
 
 memorySet :: State -> Symbol -> MemoryRequest -> IO State
