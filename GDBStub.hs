@@ -56,19 +56,19 @@ handleCommand state ('m':pktData) = do
         sendResponse (conn state) response
         if isDescription address then doSymbol state $ symbolById address
             else return state
-        where response = memoryRequest request
+        where response = memoryRequest state request
               request = MemoryRequest address len ""
               address = readAddress pktData
               len = readLength pktData
 
 handleCommand state ('M':pktData) = do
         sendSuccess (conn state)
-        sendResponse (conn state) result
+        sendResponse (conn state) "OK"
         putStrLn $ "setting " ++ (show address) ++ " " ++ (show bytes)
-        putStrLn $ "result is " ++ result
-        return state
+        putStrLn $ "dir is " ++ (dir state)
+        rstate
         --putStrLn $ (description symbol)
-        where result = memorySet symbol request
+        where rstate = memorySet state symbol request
               request = MemoryRequest address len bytes
               symbol = symbolById address
               address = readAddress pktData
@@ -120,8 +120,7 @@ sendResponse sock pkt = sendString sock pktData
 
 processPacket :: State -> String -> Int -> IO State
 processPacket state pkt chk = if verifyPacket pkt chk
-                               then do handleCommand state pkt
-                                       return state
+                               then handleCommand state pkt
                                else do sendFailure (conn state)
                                        return state
 

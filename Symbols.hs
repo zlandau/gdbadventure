@@ -7,7 +7,8 @@ import State
 --    get_desc :: a -> String
 
 data Symbol = Item { description :: String }
-            | Action { act_handler :: IO () }
+            | Action { act_handler :: IO (),
+                       read_memory :: String }
 
 type Address = Integer
 
@@ -22,9 +23,11 @@ symbols = [dummy, here, lamp, direction]
 
 
 dummy = Item { description = "dummy var" }
-here = Item { description = "a room!" }
+here = Action { act_handler = putStrLn "some action",
+                read_memory = "in a room" }
 lamp = Item { description = "a lamp!" }
-direction = Action { act_handler = putStrLn "hi im a direction"}
+direction = Action { act_handler = putStrLn "hi im a direction",
+                     read_memory = "hi" }
 unknown = Item { description = "what do you mean?" }
 
 identifier_base :: Address
@@ -50,26 +53,33 @@ symbolById addr = symbol
           symbol = if symbolPos >= length symbols then unknown
                    else symbols !! symbolPos
 
+-- Fulfill a partial string request
+getGDBString :: String -> Address -> Int -> String
+getGDBString str addr len = strToHexStr $ nullStr $ partialStr str offset len
+    where offset = idDescOffset addr
+
 doSymbol :: State -> Symbol -> IO State
 doSymbol state (Item d) = putStrLn "an item" >> return state
-doSymbol state (Action a) = putStrLn "an action" >> return state
+doSymbol state (Action a r) = putStrLn "an action" >> return state
 
-memoryGet :: Symbol -> MemoryRequest -> String
-memoryGet (Item desc) (MemoryRequest addr len _)
-                = strToHexStr $ nullStr $ partialStr desc offset len
-    where offset = idDescOffset addr
-memoryGet (Action a) (MemoryRequest _ _ _) = "E11"
+memoryGet :: State -> Symbol -> MemoryRequest -> String
+memoryGet state (Item desc) (MemoryRequest addr len _)
+                = getGDBString desc addr len
+memoryGet state (Action a r) (MemoryRequest addr len _)
+                = getGDBString r addr len
+           
 
-memorySet :: Symbol -> MemoryRequest -> String
-memorySet (Item desc) (MemoryRequest addr len bytes) = "E01"
-memorySet (Action a) (MemoryRequest addr len bytes) = "OK"
+memorySet :: State -> Symbol -> MemoryRequest -> IO State
+memorySet state (Item desc) (MemoryRequest addr len bytes) = return state
+memorySet state (Action a r) (MemoryRequest addr len bytes) = do
+    return state { dir = bytes }
 
-memoryRequest :: MemoryRequest -> String
-memoryRequest mr@(MemoryRequest addr len _)
+memoryRequest :: State -> MemoryRequest -> String
+memoryRequest state mr@(MemoryRequest addr len _)
               | isIdentifier addr = toAddress $ idDescAddress addr
-              | isDescription addr = memoryGet symbol mr
+              | isDescription addr = memoryGet state symbol mr
     where symbol = symbolById addr
-memoryRequest (MemoryRequest _ len _) = pad '0' (len-1) "0"
+memoryRequest _ (MemoryRequest _ len _) = pad '0' (len-1) "0"
 
 isIdentifier :: Address -> Bool
 isIdentifier x = (x >= identifier_base) && (x < identifier_space)
