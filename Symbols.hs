@@ -2,6 +2,7 @@ module Symbols where
 
 import Utils
 import State
+import Room
 
 --class Symbol a where
 --    get_desc :: a -> String
@@ -24,7 +25,7 @@ symbols = [dummy, here, lamp, direction]
 
 dummy = Item { description = "dummy var" }
 here = Action { act_handler = putStrLn "some action",
-                read_memory = \state -> "in a room " ++ (dir state) }
+                read_memory = \state -> (room_desc $ room state) }
 lamp = Item { description = "a lamp!" }
 direction = Action { act_handler = putStrLn "hi im a direction",
                      read_memory = \state -> "hi" }
@@ -72,7 +73,8 @@ memoryGet state (Action a r) (MemoryRequest addr len _)
 memorySet :: State -> Symbol -> MemoryRequest -> IO State
 memorySet state (Item desc) (MemoryRequest addr len bytes) = return state
 memorySet state (Action a r) (MemoryRequest addr len bytes) = do
-    return state { dir = bytes }
+        return state { room = (next_room r) bytes }
+    where r = room state
 
 memoryRequest :: State -> MemoryRequest -> String
 memoryRequest state mr@(MemoryRequest addr len _)

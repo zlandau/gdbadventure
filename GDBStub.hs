@@ -8,6 +8,7 @@ import Control.Exception as E
 import Symbols as Symbols
 import State
 import Utils
+import Room
 
 port = "1234"
 
@@ -25,7 +26,7 @@ server_loop = do
           acceptLoop s `E.catch` (\e -> close s)
 
 acceptLoop sock = do (csock, sa) <- accept sock
-                     handler (return $ State csock "u") `E.catch` (\e -> print e >> close csock)
+                     handler (return $ State csock "u" room1) `E.catch` (\e -> print e >> close csock)
                      acceptLoop sock
 
 getChecksum :: Socket -> IO Int
